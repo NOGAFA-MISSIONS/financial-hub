@@ -1,31 +1,211 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NOGAFA | General Offering</title>
-    
-    <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/1jWNHcm7MqxqCYT6H2ZPqNep0q2OKsYKA">
-    
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            width: 100%;
-            overflow: hidden;
-            background-color: #0f172a;
-        }
-        iframe {
-            border: none;
-            width: 100%;
-            height: 100%;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>NOGAFA Premium Financials</title>
+
+<!-- ⚙️ CONFIG — paste your Apps Script web-app URL between the quotes in the script below (look for APP_URL). -->
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#0b132b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NOGAFA">
+<meta name="mobile-web-app-capable" content="yes">
+
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: #0b132b; overflow: hidden; }
+
+  /* ---- The live system fills the whole screen ---- */
+  #appFrame {
+    position: fixed; inset: 0;
+    width: 100%; height: 100%;
+    border: none; background: #0b132b;
+  }
+
+  /* ---- Launch splash: ~3s logo intro ---- */
+  #splash {
+    position: fixed; inset: 0; z-index: 50;
+    background: radial-gradient(circle at 50% 40%, #ffffff 0%, #f2f4f9 70%, #e9edf5 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: opacity .7s ease; font-family: Georgia, 'Times New Roman', serif;
+  }
+  #splash.hidden { opacity: 0; pointer-events: none; }
+  #splash img {
+    width: 150px; height: 150px;
+    animation: logoIn 1.1s cubic-bezier(.22,1,.36,1) both;
+  }
+  @keyframes logoIn {
+    from { opacity: 0; transform: scale(.72); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  #splash h1 { margin-top: 20px; color: #0b132b; font-size: 1.3rem; letter-spacing: 3px; font-weight: 700;
+               animation: fadeUp .9s ease .5s both; }
+  #splash p.sub { margin-top: 6px; color: #5a6a8a; font-size: .78rem; letter-spacing: 1.5px;
+                  font-family: Arial, Helvetica, sans-serif; text-transform: uppercase;
+                  animation: fadeUp .9s ease .7s both; }
+  #splash p.verse { margin-top: 14px; color: #a8802a; font-size: .95rem; font-style: italic;
+                    letter-spacing: .5px; animation: fadeUp .9s ease .9s both; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .bar { margin-top: 20px; display: flex; gap: 0; width: 150px; height: 3px; border-radius: 2px; overflow: hidden;
+         animation: fadeUp .9s ease 1.1s both; }
+  .bar span { flex: 1; }
+  .spinner { margin-top: 26px; width: 26px; height: 26px; border-radius: 50%;
+             border: 3px solid rgba(11,19,43,.12); border-top-color: #0b132b;
+             animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---- Install button ---- */
+  #installBtn {
+    position: fixed; right: 16px; bottom: 18px; z-index: 60; display: none;
+    align-items: center; gap: 8px; padding: 12px 18px; border: none; border-radius: 30px;
+    background: linear-gradient(135deg, #14224a, #0b132b); color: #d8b35c;
+    font: 600 0.9rem Arial, Helvetica, sans-serif; letter-spacing: .4px;
+    box-shadow: 0 6px 22px rgba(0,0,0,.5), 0 0 0 1px rgba(216,179,92,.45);
+    cursor: pointer;
+  }
+  #installBtn:active { transform: scale(.97); }
+
+  /* ---- iOS install instructions sheet ---- */
+  #iosSheet {
+    position: fixed; inset: 0; z-index: 70; display: none;
+    background: rgba(5, 9, 22, .78); align-items: flex-end; justify-content: center;
+  }
+  #iosSheet .card {
+    background: #101c3d; color: #e8edf7; width: 100%; max-width: 430px;
+    border-radius: 18px 18px 0 0; padding: 26px 24px 34px;
+    font-family: Arial, Helvetica, sans-serif; box-shadow: 0 -8px 30px rgba(0,0,0,.5);
+  }
+  #iosSheet h2 { color: #d8b35c; font-size: 1.05rem; margin-bottom: 14px; }
+  #iosSheet ol { margin-left: 20px; line-height: 1.9; font-size: .92rem; }
+  #iosSheet button { margin-top: 20px; width: 100%; padding: 12px; border: none; border-radius: 10px;
+                     background: #d8b35c; color: #0b132b; font-weight: 700; font-size: .95rem; cursor: pointer; }
+
+  /* ---- Config / offline notices ---- */
+  .notice {
+    position: fixed; inset: 0; z-index: 80; display: none;
+    background: #0b132b; color: #e8edf7; text-align: center;
+    flex-direction: column; align-items: center; justify-content: center;
+    font-family: Arial, Helvetica, sans-serif; padding: 30px;
+  }
+  .notice h2 { color: #d8b35c; margin-bottom: 12px; }
+  .notice p  { color: #8fa3c8; font-size: .92rem; line-height: 1.7; max-width: 420px; }
+  .notice button { margin-top: 22px; padding: 12px 28px; border: none; border-radius: 10px;
+                   background: #d8b35c; color: #0b132b; font-weight: 700; cursor: pointer; }
+</style>
 </head>
 <body>
 
-    <iframe src="https://script.google.com/macros/s/AKfycbwHSAf2lO6Hgx6-xvZe8-KmexEpVuXSq6LwnBWPlAT5nPkAVrdAXzuF20jNZj-GowAqBw/exec"></iframe>
+<div id="splash">
+  <img src="icons/logo.png" alt="NOGAFA — Alive Faith Army">
+  <h1>NOGAFA WORLD MISSION</h1>
+  <p class="sub">Premium Financial System</p>
+  <p class="verse">Acts 17:6; Psalm 67:1-2</p>
+  <div class="bar">
+    <span style="background:#2e5cb8"></span><span style="background:#c0392b"></span>
+    <span style="background:#27ae60"></span><span style="background:#d8b35c"></span>
+  </div>
+  <div class="spinner"></div>
+</div>
 
+<iframe id="appFrame" title="NOGAFA Premium Financial System" allow="clipboard-write"></iframe>
+
+<button id="installBtn">📱 Install App</button>
+
+<div id="iosSheet">
+  <div class="card">
+    <h2>📱 Install NOGAFA on your iPhone</h2>
+    <ol>
+      <li>Tap the <b>Share</b> button <span style="color:#d8b35c">⎋</span> at the bottom of Safari</li>
+      <li>Scroll and tap <b>Add to Home Screen</b></li>
+      <li>Tap <b>Add</b> — the NOGAFA icon appears on your home screen</li>
+    </ol>
+    <button onclick="document.getElementById('iosSheet').style.display='none'">Got it</button>
+  </div>
+</div>
+
+<div class="notice" id="configNotice">
+  <h2>⚙️ One-time setup needed</h2>
+  <p>Open <b>index.html</b> and paste your Apps Script web-app URL (the one ending in <b>/exec</b>) into the <b>APP_URL</b> line near the bottom of the file.</p>
+</div>
+
+<div class="notice" id="offlineNotice">
+  <h2>📡 No internet connection</h2>
+  <p>NOGAFA needs an internet connection to open your live financial records. Connect and try again.</p>
+  <button onclick="location.reload()">Retry</button>
+</div>
+
+<script>
+  /* =====================================================================
+     ⚙️ APP_URL — PASTE YOUR APPS SCRIPT WEB-APP LINK HERE (ends in /exec)
+     ===================================================================== */
+  var APP_URL = "https://script.google.com/macros/s/AKfycbwHSAf2lO6Hgx6-xvZe8-KmexEpVuXSq6LwnBWPlAT5nPkAVrdAXzuF20jNZj-GowAqBw/exec";
+
+  var splash = document.getElementById('splash');
+  var frame  = document.getElementById('appFrame');
+  var splashShownAt = Date.now();
+
+  function hideSplash() {
+    var wait = Math.max(0, 3000 - (Date.now() - splashShownAt)); // ~3-second logo intro
+    setTimeout(function () { splash.classList.add('hidden'); }, wait);
+  }
+
+  if (APP_URL.indexOf('http') !== 0) {
+    splash.classList.add('hidden');
+    document.getElementById('configNotice').style.display = 'flex';
+  } else if (!navigator.onLine) {
+    splash.classList.add('hidden');
+    document.getElementById('offlineNotice').style.display = 'flex';
+  } else {
+    frame.src = APP_URL;
+    frame.addEventListener('load', hideSplash);
+    setTimeout(hideSplash, 12000); // safety: never trap the user on the splash
+  }
+
+  window.addEventListener('online',  function () { location.reload(); });
+
+  /* ---- Service worker (makes the app installable) ---- */
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  }
+
+  /* ---- Install button ---- */
+  var installBtn = document.getElementById('installBtn');
+  var deferredPrompt = null;
+  var isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                     || window.navigator.standalone === true;
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (!isStandalone) installBtn.style.display = 'flex';
+  });
+
+  if (isIOS && !isStandalone) installBtn.style.display = 'flex';
+
+  installBtn.addEventListener('click', function () {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(function (choice) {
+        if (choice && choice.outcome === 'accepted') installBtn.style.display = 'none';
+        deferredPrompt = null;
+      });
+    } else if (isIOS) {
+      document.getElementById('iosSheet').style.display = 'flex';
+    }
+  });
+
+  window.addEventListener('appinstalled', function () {
+    installBtn.style.display = 'none';
+  });
+</script>
 </body>
 </html>
